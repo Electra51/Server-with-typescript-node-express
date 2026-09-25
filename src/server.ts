@@ -43,6 +43,21 @@ const initDB = async () => {
 
 initDB();
 
+const startServer = async () => {
+  try {
+    await initDB();
+
+    app.listen(config.port, () => {
+      console.log(`Server is running on port ${config.port}`);
+    });
+  } catch (error) {
+    console.error("Database initialization failed:", error);
+    process.exit(1);
+  }
+};
+
+startServer();
+
 //get api
 app.get("/", (req: Request, res: Response) => {
   res.send("This is a TypeScript Express server running on Node.js!");
@@ -63,6 +78,101 @@ app.post("/users", async (req: Request, res: Response) => {
       success: true,
       message: "User created successfully!", //success message
       data: result?.rows[0],
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
+//get api for user list
+app.get("/users", async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query("SELECT * FROM users");
+    res.status(200).json({
+      success: true,
+      message: "User list fetched successfully!", //success message
+      data: result?.rows,
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
+//get api for user by id
+app.get("/users/:id", async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query("SELECT * FROM users WHERE id = $1", [
+      req.params.id,
+    ]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found!",
+      });
+    }
+    res.status(200).json({
+      success: true,
+      message: "User fetched successfully!", //success message
+      data: result?.rows[0],
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
+//put api for user update
+app.put("/users/:id", async (req: Request, res: Response) => {
+  const { name, email, age, phone, address } = req.body;
+  try {
+    const result = await pool.query(
+      "UPDATE users SET name = $1, email = $2, age = $3, phone = $4, address = $5 WHERE id = $6 RETURNING *",
+      [name, email, age, phone, address, req.params.id],
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found!",
+      });
+    }
+    res.status(200).json({
+      success: true,
+      message: "User updated successfully!", //success message
+      data: result?.rows[0],
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
+//delete api for user delete
+app.delete("/users/:id", async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query(
+      "DELETE FROM users WHERE id = $1 RETURNING *",
+      [req.params.id],
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found!",
+      });
+    }
+    res.status(200).json({
+      success: true,
+      message: "User deleted successfully!", //success message
+      data: null,
     });
   } catch (err: any) {
     res.status(500).json({
