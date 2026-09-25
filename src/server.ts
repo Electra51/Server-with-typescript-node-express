@@ -5,11 +5,11 @@ const app = express();
 
 // body parser
 app.use(express.json()); //// Parses incoming JSON data from the request body.
-app.use(express.urlencoded()); //Parse form data from the request body
+app.use(express.urlencoded({ extended: true })); //Parse form data from the request body
 
 //db
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: config.databaseUrl,
 });
 
 // table creation
@@ -43,17 +43,33 @@ const initDB = async () => {
 
 initDB();
 
+//get api
 app.get("/", (req: Request, res: Response) => {
   res.send("This is a TypeScript Express server running on Node.js!");
 });
 
-app.post("/", (req: Request, res: Response) => {
-  console.log(req.body);
+//post api for user create
+app.post("/users", async (req: Request, res: Response) => {
+  const { name, email, age, phone, address } = req.body;
+  try {
+    const result = await pool.query(
+      "INSERT INTO users (name, email, age, phone, address) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+      [name, email, age, phone, address],
+    );
 
-  res.status(201).json({
-    success: true,
-    message: "POST request received successfully!",
-  });
+    console.log("result:", result?.rows[0]);
+
+    res.status(201).json({
+      success: true,
+      message: "User created successfully!", //success message
+      data: result?.rows[0],
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
 });
 
 app.listen(config.port, () => {
